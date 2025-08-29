@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Executive Gantt — Projects × 5 Phases</title>
+<style>
+  :root{
+    --bg:#ffffff;--fg:#0f172a;--muted:#64748b;--grid:#d1d5db;
+    --lane:#f8fafc;--weekend:#fafafa;--today:#ef4444;
+    --rail-w:220px;
+    --row-h:36px;--hdr-h:64px;
+    --px-per-day:4; --font:Inter,Segoe UI,system-ui,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);color:var(--fg);font:14px/1.35 var(--font);margin:0}
+  header{display:flex;gap:12px;align-items:center;padding:12px 16px;position:sticky;top:0;background:linear-gradient(var(--bg),var(--bg));
+         border-bottom:1px solid var(--grid);z-index:10}
+  header h1{font-size:16px;margin:0 12px 0 0;white-space:nowrap}
+  input,button,select,textarea{font:inherit}
+  button{padding:6px 10px;border:1px solid var(--grid);border-radius:8px;background:#fff;cursor:pointer}
+  button:hover{background:#f9fafb}
+  textarea{width:560px;height:180px;resize:vertical}
+  .pane{display:grid;grid-template-columns: var(--rail-w) 1fr; grid-template-rows: var(--hdr-h) 1fr; height:calc(100% - 78px)}
+  .rail-h,.grid-h{position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--grid)}
+  .rail-h{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--grid)}
+  .grid-h{overflow:hidden}
+  .rail{overflow:auto;border-right:1px solid var(--grid);background:var(--lane); scrollbar-gutter:stable both-edges; position:relative;}
+  .grid{overflow:auto;position:relative;background:#fff; scrollbar-gutter:stable both-edges}
+  .gridInner{position:relative}
+  .streamBand{position:absolute;left:0;right:0;opacity:.6}
+  .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
+  .bar{position:absolute;height:24px;border-radius:6px;display:flex;align-items:center;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+  .bar span{color:#fff;font-weight:600;font-size:12px;padding:0 8px;text-shadow:0 1px 0 rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .today{position:absolute;top:0;bottom:0;border-left:2px dashed var(--today);pointer-events:none;z-index:3}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .badge{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:6px;padding:2px 6px;font-weight:600}
+  .axisQ{position:absolute;left:0;right:0;top:0;height:50%}
+  .axisM{position:absolute;left:0;right:0;bottom:0;height:50%;border-top:1px solid var(--grid)}
+  .axisLabel{position:absolute;color:var(--muted);font-weight:600}
+  .legend{display:flex;gap:12px;align-items:center;color:var(--muted);font-size:12px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .row{height:var(--row-h);display:flex;align-items:center;border-bottom:1px solid var(--grid);padding:0 8px 0 24px;}
+  .laneLabel{font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .streamLabel{
+    position:absolute; left:8px; z-index:2;
+    writing-mode:vertical-rl; transform:rotate(180deg);
+    text-align:center; font-weight:600; font-size:12px; color:var(--muted);
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Executive Gantt — Projects × 5 Phases</h1>
+  <div class="controls">
+    <label>Rail width (px) <input id="railw" type="number" min="140" step="10" value="220" style="width:72px"></label>
+    <label>Zoom (px/day) <input id="zoom" type="number" step="1" min="1" value="4" style="width:64px"></label>
+    <label>Row height <input id="rowh" type="number" step="2" min="28" value="36" style="width:64px"></label>
+    <label>Header height <input id="hdrh" type="number" step="2" min="56" value="64" style="width:64px"></label>
+    <label><input id="shadeStream" type="checkbox" checked> Shade stream groups</label>
+    <label><input id="stackPhases" type="checkbox" checked> Stack phases (5)</label>
+    <label>Phase bar height <input id="miniH" type="number" step="1" min="3" max="20" value="8" style="width:56px"></label>
+    <label><input id="labels" type="checkbox"> Show labels in bars</label>
+    <button id="render">Render</button>
+    <button id="dlSvg">Download SVG</button>
+    <button id="dlPng">Download PNG</button>
+    <span class="badge">Paste: Stream, Project, (Phase*), Start, End, (Color)</span>
+  </div>
+</header>
+
+<div class="pane">
+  <div class="rail-h"><div class="laneLabel" title="Projects">Projects</div></div>
+  <div class="grid-h" id="axis" aria-hidden="true"></div>
+  <div class="rail" id="rail"></div>
+  <div class="grid" id="grid"><div class="gridInner" id="gridInner"></div></div>
+</div>
+
+<section style="padding:12px 16px;border-top:1px solid var(--grid);display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between;">
+  <textarea id="data" placeholder="Stream [tab] Project [tab] (Phase?) [tab] Start [tab] End [tab] (Color?)">Stream,Project,Phase,Start,End
+Cross-stream,Project Phoenix - Rebirth of the Core System,Prepare,2025-01-15,2025-02-15
+Cross-stream,Project Phoenix - Rebirth of the Core System,Design,2025-02-10,2025-04-10
+Cross-stream,Project Phoenix - Rebirth of the Core System,Build & Test,2025-03-20,2025-07-20
+Cross-stream,Project Phoenix - Rebirth of the Core System,Deploy,2025-07-15,2025-08-05
+Cross-stream,Project Phoenix - Rebirth of the Core System,Stabilize,2025-08-01,2025-09-01
+Cross-stream,Quantum Leap Initiative - AI Integration,Prepare,2025-03-01,2025-04-01
+Cross-stream,Quantum Leap Initiative - AI Integration,Design,2025-03-25,2025-05-30
+Cross-stream,Quantum Leap Initiative - AI Integration,Build & Test,2025-05-15,2025-09-15
+Cross-stream,Quantum Leap Initiative - AI Integration,Deploy,2025-09-10,2025-09-30
+Cross-stream,Quantum Leap Initiative - AI Integration,Stabilize,2025-09-25,2025-10-25
+P2P,Project Cerberus - Vendor Portal Overhaul,Prepare,2025-02-01,2025-03-10
+P2P,Project Cerberus - Vendor Portal Overhaul,Design,2025-03-01,2025-05-01
+P2P,Project Cerberus - Vendor Portal Overhaul,Build & Test,2025-04-15,2025-08-15
+P2P,Project Cerberus - Vendor Portal Overhaul,Deploy,2025-08-10,2025-09-01
+P2P,Project Cerberus - Vendor Portal Overhaul,Stabilize,2025-08-25,2025-09-30
+A2G,Project Atlas - Global HR Platform Migration,Prepare,2025-04-10,2025-05-20
+A2G,Project Atlas - Global HR Platform Migration,Design,2025-05-15,2025-07-15
+A2G,Project Atlas - Global HR Platform Migration,Build & Test,2025-07-01,2025-11-01
+A2G,Project Atlas - Global HR Platform Migration,Deploy,2025-10-20,2025-11-20
+A2G,Project Atlas - Global HR Platform Migration,Stabilize,2025-11-15,2025-12-31
+MDM,Project Chimera - Master Data Unification,Prepare,2025-06-01,2025-07-01
+MDM,Project Chimera - Master Data Unification,Design,2025-06-20,2025-08-20
+MDM,Project Chimera - Master Data Unification,Build & Test,2025-08-01,2025-12-15
+MDM,Project Chimera - Master Data Unification,Deploy,2025-12-01,2026-01-15
+MDM,Project Chimera - Master Data Unification,Stabilize,2026-01-10,2026-02-28
+R2R,Project Griffin - Financial Close Automation,Prepare,2025-05-01,2025-06-01
+R2R,Project Griffin - Financial Close Automation,Design,2025-05-20,2025-07-20
+R2R,Project Griffin - Financial Close Automation,Build & Test,2025-07-10,2025-10-10
+R2R,Project Griffin - Financial Close Automation,Deploy,2025-10-01,2025-10-31
+R2R,Project Griffin - Financial Close Automation,Stabilize,2025-10-25,2025-11-30</textarea>
+  <div style="text-align: right; color: var(--muted); font-size: 12px; margin-left: auto;">
+    <div class="legend" id="legend" style="justify-content: flex-end; margin-bottom: 12px;"></div>
+    <div>Created by Jakub Grzywa</div>
+  </div>
+</section>
+
+<script>
+(function(){
+  // -------- SETTINGS
+  const PREFERRED_ORDER = ["Cross-stream","A2G","L2C","MDM","P2P","R2R"];
+  const PHASES = ["Prepare","Design","Build & Test","Deploy","Stabilize"];
+  const PHASE_COLORS = {"Prepare":"#60a5fa","Design":"#34d399","Build & Test":"#0ea5e9","Deploy":"#f59e0b","Stabilize":"#ef4444"};
+  const PHASE_RATIOS = { "Prepare":.18, "Design":.22, "Build & Test":.38, "Deploy":.12, "Stabilize":.10 };
+  const OVERLAP = { "Prepare":.25, "Design":.25, "Build & Test":.20, "Deploy":.20 };
+  const MIN_PHASE_DAYS = 5;
+
+  // -------- DOM ELEMENTS
+  const $ = s => document.querySelector(s);
+  const axis = $("#axis"), rail = $("#rail"), grid = $("#grid"), gridInner = $("#gridInner");
+  const dataEl = $("#data"), zoomEl = $("#zoom"), rowhEl = $("#rowh"), hdrhEl = $("#hdrh"), shadeStreamEl = $("#shadeStream"), railwEl = $("#railw"), stackEl = $("#stackPhases"), miniHEl = $("#miniH"), labelsEl = $("#labels");
+  const legend = $("#legend");
+
+  // -------- DATE HELPERS
+  function parseDate(raw){ if(!raw) return null; const v = String(raw).trim(); if(!v) return null; const dmySlash=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/, dmyDot=/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/, ymdDash=/^(\d{4})-(\d{1,2})-(\d{1,2})$/; const ny = y => (y<100? 2000+ +y : +y); if(ymdDash.test(v)){ const [,Y,M,D]=v.match(ymdDash); return new Date(Date.UTC(+Y,+M-1,+D)); } if(dmySlash.test(v)){ const [,D,M,Y]=v.match(dmySlash); return new Date(Date.UTC(ny(Y),+M-1,+D)); } if(dmyDot.test(v)){ const [,D,M,Y]=v.match(dmyDot); return new Date(Date.UTC(ny(Y),+M-1,+D)); } const t = Date.parse(v); return isNaN(t)? null : new Date(t); }
+  const startOfDay = d=> new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const daysBetween = (a,b)=> Math.max(0, Math.round((startOfDay(b)-startOfDay(a))/(24*3600*1000)));
+  const addDays = (d,n)=> { const r=new Date(d); r.setUTCDate(r.getUTCDate()+n); return r; };
+
+  // -------- DATA PROCESSING
+  function parseInput(txt){ const rows = txt.split(/\r?\n/).map(r=>r.trim()).filter(Boolean).map(r=> r.split(/\t|,(?=(?:[^"]*"[^"]*")*[^"]*$)/)); const out=[]; for(const r of rows){ const maybeStart = parseDate(r[2]) || parseDate(r[3]); const maybeEnd = parseDate(r[3]) || parseDate(r[4]); if(!maybeStart && !maybeEnd && /start|data/i.test(r.join(" "))) continue; let stream=(r[0]||"").trim(), project=(r[1]||"").trim(), phase="", start=null, end=null, color=""; if(r.length>=5){ phase=(r[2]||"").trim(); start=parseDate(r[3]); end=parseDate(r[4]); color=(r[5]||"").trim(); } else { start=parseDate(r[2]); end=parseDate(r[3]); color=(r[4]||"").trim(); } if(!start){ console.warn("Skipping row without a Start date:", r); continue; } out.push({stream, project, phase, start, end, color}); } return out; }
+  function expandToPhases(rows){ const hasPhase = rows.some(r=> r.phase && PHASES.includes(r.phase)); if(hasPhase){ return rows.map(r=> ({...r, phase: PHASES.includes(r.phase)? r.phase : "Build & Test"})); } const byProj={}; rows.forEach(r=>{ const key=r.stream+"||"+r.project; byProj[key] = byProj[key] || {stream:r.stream, project:r.project, start:r.start, end:r.end, color:r.color}; if(r.start < byProj[key].start) byProj[key].start = r.start; if(r.end && (!byProj[key].end || r.end > byProj[key].end)) byProj[key].end = r.end; }); const tasks=[]; for(const k in byProj){ const {stream,project,start,end,color}=byProj[k]; const total = Math.max(1, daysBetween(start, end || addDays(start,60))); const nominal = PHASES.map(p=> Math.max(MIN_PHASE_DAYS, Math.round(PHASE_RATIOS[p]*total))); let phaseStart = new Date(start); let prevLen = nominal[0]; for(let i=0;i<PHASES.length;i++){ const pName = PHASES[i]; const len = nominal[i]; const pStart = (i===0)? new Date(start) : addDays(phaseStart, Math.round(prevLen*(1-(OVERLAP[PHASES[i-1]]||0)))); let pEnd = addDays(pStart, len); if(end && pEnd>end) pEnd=new Date(end); tasks.push({stream,project,phase:pName,start:pStart,end:pEnd,color:PHASE_COLORS[pName]||color}); phaseStart = pStart; prevLen = Math.max(1, daysBetween(pStart,pEnd)); } if(end){ const last=tasks[tasks.length-1]; if(last && last.project===project && last.stream===stream) last.end=new Date(end); } } return tasks; }
+  function computeLanes(tasks){ const set=new Map(); for(const t of tasks){ const key=t.stream+"||"+t.project; if(!set.has(key)) set.set(key,{stream:t.stream, project:t.project}); } const preferredLower = PREFERRED_ORDER.map(s => s.toLowerCase()); const lanes = Array.from(set.values()).sort((a,b)=>{ const ia = preferredLower.indexOf(a.stream.toLowerCase()); const ib = preferredLower.indexOf(b.stream.toLowerCase()); if(ia !== -1 && ib !== -1 && ia !== ib) return ia - ib; if(ia !== -1 && ib === -1) return -1; if(ia === -1 && ib !== -1) return 1; const streamCompare = a.stream.localeCompare(b.stream); if (streamCompare !== 0) return streamCompare; return a.project.localeCompare(b.project); }); return lanes; }
+  function domain(tasks){ const min = new Date(Math.min(...tasks.map(t=>t.start?.getTime()||Infinity))); const max = new Date(Math.max(...tasks.map(t=>t.end?.getTime() || (t.start.getTime()+21*24*3600*1000)))); min.setDate(min.getDate()-3); max.setDate(max.getDate()+3); return [startOfDay(min), startOfDay(max)]; }
+
+  // -------- RENDER (Live View)
+  function renderAxis(d0,d1,pxPerDay){ axis.innerHTML = ""; const days = daysBetween(d0,d1); const width = days*pxPerDay; const holder = document.createElement("div"); holder.style.cssText=`position:relative;height:${getComputedStyle(document.documentElement).getPropertyValue('--hdr-h')};width:${width}px`; axis.append(holder); const bandQ = document.createElement("div"); bandQ.className="axisQ"; holder.append(bandQ); const bandM = document.createElement("div"); bandM.className="axisM"; holder.append(bandM); let dq = new Date(d0); dq.setMonth(Math.floor(dq.getMonth()/3)*3,1); while(dq<=d1){ const qStart = new Date(dq); const x = daysBetween(d0,qStart)*pxPerDay; const lab = document.createElement("div"); lab.className="axisLabel"; lab.style.left=(x+6)+"px"; lab.style.top="6px"; lab.textContent = `Q${Math.floor(qStart.getMonth()/3)+1} ${qStart.getFullYear()}`; bandQ.append(lab); dq.setMonth(dq.getMonth()+3,1); } const dmTotal = daysBetween(d0,d1); for(let i=0;i<=dmTotal;i++){ const d = new Date(d0); d.setDate(d0.getDate()+i); if(d.getDate()===1){ const x = i*pxPerDay; const tick = document.createElement("div"); tick.className="tick"; tick.style.left=x+"px"; gridInner.append(tick); const lab = document.createElement("div"); lab.className="axisLabel"; lab.style.left=(x+6)+"px"; lab.style.bottom="6px"; lab.textContent = d.toLocaleString('en-US',{month:'short'}); bandM.append(lab); }}}
+  function renderToday(d0){ const today = startOfDay(new Date()); if(today>=d0){ const x = daysBetween(d0,today) * (+zoomEl.value||4); const tl = document.createElement("div"); tl.className="today"; tl.style.left=x+"px"; gridInner.append(tl); }}
+  function render(){ const railW = Math.max(140, +railwEl.value||220); document.documentElement.style.setProperty('--rail-w', railW+"px"); const raw = parseInput(dataEl.value); let tasks = expandToPhases(raw); if(!tasks.length){ alert("No valid rows with a Start date found."); return; } legend.innerHTML = ""; PHASES.forEach(p=>{ const sw = document.createElement("span"); sw.className="dot"; sw.style.background=PHASE_COLORS[p]; const wl = document.createElement("span"); wl.textContent=" "+p; const wrap = document.createElement("span"); wrap.append(sw, wl); legend.append(wrap); }); const [d0,d1] = domain(tasks); const lanes = computeLanes(tasks); const L = Math.max(1, lanes.length); const days = Math.max(1, daysBetween(d0,d1)); zoomEl.value = Math.max(1, Math.floor(grid.clientWidth / days)); rowhEl.value = Math.max(28, Math.floor(rail.clientHeight / L)); const pxPerDay = +zoomEl.value || 4; const rowH = +rowhEl.value || 36; const hdrH = +hdrhEl.value || 64; document.documentElement.style.setProperty('--px-per-day', pxPerDay+""); document.documentElement.style.setProperty('--row-h', rowH+"px"); document.documentElement.style.setProperty('--hdr-h', hdrH+"px"); const width = days * pxPerDay; axis.innerHTML = ""; gridInner.innerHTML = ""; rail.innerHTML = ""; gridInner.style.width = width+"px"; gridInner.style.height = (lanes.length * rowH) + "px"; renderToday(d0); renderAxis(d0,d1,pxPerDay); const ranges = []; if(lanes.length > 0) { let cs = lanes[0].stream, si = 0; for (let i = 1; i <= lanes.length; i++) { if (i === lanes.length || lanes[i].stream !== cs) { ranges.push({ stream: cs, start: si, end: i - 1 }); if (i < lanes.length) { cs = lanes[i].stream; si = i; }}}} ranges.forEach((rg, idx) => { if (shadeStreamEl.checked) { const top = Math.round(rg.start * rowH); const hgt = Math.round((rg.end - rg.start + 1) * rowH); const band = document.createElement("div"); band.className = "streamBand"; band.style.top = top + "px"; band.style.height = hgt + "px"; band.style.background = idx % 2 ? '#f8fafc' : '#eff6ff'; gridInner.append(band); } const label = document.createElement("div"); label.className = "streamLabel"; label.textContent = rg.stream; label.style.top = (rg.start * rowH) + "px"; label.style.height = ((rg.end - rg.start + 1) * rowH) + "px"; rail.append(label); }); lanes.forEach((lane, li)=>{ const r = document.createElement("div"); r.className="row"; r.style.height=rowH+"px"; const label = document.createElement("div"); label.className="laneLabel"; label.textContent = lane.project; label.title = lane.project; r.append(label); rail.append(r); const yTop = Math.round(li*rowH); const sep = document.createElement("div"); sep.style.cssText=`position:absolute;left:0;right:0;top:${Math.round(yTop + rowH - 1)}px;height:1px;background:var(--grid)`; gridInner.append(sep); const items = tasks.filter(t=> t.stream===lane.stream && t.project===lane.project); const stacked = !!(stackEl && stackEl.checked); const gap = 1; const userMini = Math.max(3, Math.min(20, +(miniHEl?.value||8))); const maxMiniFit = Math.max(3, Math.floor((rowH - 2 - gap*(PHASES.length-1)) / PHASES.length)); const miniH = Math.min(userMini, maxMiniFit); const totalStackH = miniH*PHASES.length + gap*(PHASES.length-1); const vPad = Math.max(1, Math.floor((rowH - totalStackH) / 2)); const phaseIndex = p => Math.max(0, PHASES.indexOf(p)); items.forEach(t=>{ const x0 = Math.round(daysBetween(d0,t.start)*pxPerDay); const x1 = Math.round(daysBetween(d0,t.end)*pxPerDay); const w = Math.max(pxPerDay, x1-x0); const y = stacked ? (Math.round(li*rowH) + vPad + phaseIndex(t.phase) * (miniH + gap)) : Math.round(li*rowH + (rowH-24)/2); const bar = document.createElement("div"); bar.className="bar"; bar.style.left = x0+"px"; bar.style.top = y+"px"; bar.style.width = w+"px"; bar.style.height = (stacked? miniH : 24) + "px"; bar.style.background = t.color || PHASE_COLORS[t.phase] || "#ccc"; bar.title = `${lane.project} • ${t.phase}\n${new Date(t.start).toLocaleDateString()} → ${new Date(t.end).toLocaleDateString()}`; if(labelsEl.checked){ const span = document.createElement("span"); span.textContent = `${t.phase}`; bar.append(span); } gridInner.append(bar); }); }); let syncing=false; grid.addEventListener('scroll', ()=>{ if(!syncing){ syncing=true; rail.scrollTop = grid.scrollTop; axis.scrollLeft = grid.scrollLeft; syncing=false; }}, {passive:true}); rail.addEventListener('scroll', ()=>{ if(!syncing){ syncing=true; grid.scrollTop = rail.scrollTop; syncing=false; }}, {passive:true}); window.__lastExport = () => exportAsSVG({d0,d1,pxPerDay,rowH,hdrH,lanes,tasks,width, railW:railW}); }
+
+  // -------- EXPORT (SVG/PNG)
+  function exportAsSVG(ctx){ const {d0,d1,pxPerDay,rowH,hdrH,lanes,tasks,width, railW} = ctx; const svgNS="http://www.w3.org/2000/svg"; const contentW = railW + width; const contentH = hdrH + lanes.length*rowH; const svg = document.createElementNS(svgNS,"svg"); svg.setAttribute("xmlns",svgNS); svg.setAttribute("width",contentW); svg.setAttribute("height",contentH); svg.setAttribute("viewBox",`0 0 ${contentW} ${contentH}`); const defs = document.createElementNS(svgNS, 'defs'); defs.innerHTML = `<style type="text/css">@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap');</style>`; svg.append(defs); const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim(); svg.append(rect(0,0, contentW, contentH, "#ffffff")); svg.append(rect(0,0, railW, contentH, "#f8fafc")); const days = daysBetween(d0,d1); const ranges = []; if(lanes.length > 0) { let cs = lanes[0].stream, si = 0; for (let i = 1; i <= lanes.length; i++) { if (i === lanes.length || lanes[i].stream !== cs) { ranges.push({ stream: cs, start: si, end: i - 1 }); if (i < lanes.length) { cs = lanes[i].stream; si = i; }}}} ranges.forEach((rg,idx)=>{ if(document.querySelector("#shadeStream").checked){ svg.append(rect(railW, hdrH + rg.start*rowH, width, (rg.end-rg.start+1)*rowH, idx%2 ? '#f8fafc' : '#eff6ff')); }}); let dq=new Date(d0); dq.setUTCMonth(Math.floor(dq.getUTCMonth()/3)*3,1); while(dq<=d1){ svg.append(text(railW+daysBetween(d0,dq)*pxPerDay+6, 24, `Q${Math.floor(dq.getUTCMonth()/3)+1} ${dq.getUTCFullYear()}`, 12, "#64748b", "600")); dq.setUTCMonth(dq.getUTCMonth()+3); } for(let i=0;i<=days;i++){ const d = new Date(d0); d.setUTCDate(d0.getUTCDate()+i); if(d.getUTCDate()===1){ const x=railW+i*pxPerDay; svg.append(line(x, hdrH, x, contentH, gridColor)); svg.append(text(x+6, hdrH - 10, d.toLocaleString('en-US',{month:'short'}), 12, "#64748b", "600")); }} svg.append(line(0, hdrH, contentW, hdrH, gridColor)); lanes.forEach((lane,li)=>{ const y = hdrH + li*rowH; svg.append(line(0, y+rowH, contentW, y+rowH, gridColor)); }); svg.append(line(railW, 0, railW, contentH, gridColor)); ranges.forEach(rg=>{ const x = 12; const y = hdrH + rg.start*rowH + ((rg.end-rg.start+1)*rowH)/2; const streamLbl = text(x,y, rg.stream, 12, "#64748b", "600"); streamLbl.setAttribute("text-anchor", "middle"); streamLbl.setAttribute("transform", `rotate(-90 ${x} ${y})`); svg.append(streamLbl); }); lanes.forEach((lane,li)=>{ svg.append(text(24, hdrH + li*rowH + rowH/2 + 5, lane.project, 12, "#111827", "600")); const items = tasks.filter(t=> t.stream===lane.stream && t.project===lane.project); const stacked = !!(document.querySelector("#stackPhases")?.checked); const labelsOn = !!(document.querySelector("#labels")?.checked); const gap = 1; const userMini = Math.max(3, Math.min(20, +(document.querySelector("#miniH")?.value||8))); const maxMiniFit = Math.max(3, Math.floor((rowH - 2 - gap*(PHASES.length-1)) / PHASES.length)); const miniH = Math.min(userMini, maxMiniFit); const totalStackH = miniH*PHASES.length + gap*(PHASES.length-1); const vPad = Math.max(1, Math.floor((rowH - totalStackH) / 2)); const phaseIndex = p => Math.max(0, PHASES.indexOf(p)); items.forEach(t=>{ const x0 = daysBetween(d0,t.start)*pxPerDay; const x1 = daysBetween(d0,t.end)*pxPerDay; const w = Math.max(pxPerDay, x1-x0); const y = stacked ? (hdrH + li*rowH + vPad + phaseIndex(t.phase)*(miniH+gap)) : (hdrH + li*rowH + (rowH-24)/2); const h = stacked ? miniH : 24; svg.append(rect(railW+x0, y, w, h, t.color || PHASE_COLORS[t.phase] || "#0ea5e9", 1, 6)); if(labelsOn && w > 35){ const fs = 12; const labelText = text(railW+x0+8, y+h/2 + fs/2.5, t.phase, fs, "#fff", "600"); labelText.setAttribute("text-shadow", "0 1px 2px rgba(0,0,0,0.5)"); svg.append(labelText); } }); }); const today = startOfDay(new Date()); if(today>=d0 && today<=d1){ const x=railW+daysBetween(d0,today)*pxPerDay; const l=line(x, hdrH, x, contentH, "#ef4444"); l.setAttribute("stroke-dasharray","4,4"); l.setAttribute("stroke-width","2"); svg.append(l); } return new XMLSerializer().serializeToString(svg); function rect(x,y,w,h,fill,op=1,r=0){ const el=document.createElementNS(svgNS,"rect"); el.setAttribute("x",x); el.setAttribute("y",y); el.setAttribute("width",w); el.setAttribute("height",h); el.setAttribute("fill",fill); if(r) el.setAttribute("rx",r); if(op!==1) el.setAttribute("fill-opacity",op); return el; } function line(x1,y1,x2,y2,stroke){ const l=document.createElementNS(svgNS,"line"); l.setAttribute("x1",x1); l.setAttribute("y1",y1); l.setAttribute("x2",x2); l.setAttribute("y2",y2); l.setAttribute("stroke",stroke); return l; } function text(x,y,str,fs,fill,fw="normal"){ const t=document.createElementNS(svgNS,"text"); t.setAttribute("x",x); t.setAttribute("y",y); t.setAttribute("font-size",fs); t.setAttribute("font-family", "Inter, Segoe UI, sans-serif"); t.setAttribute("fill",fill); if(fw!=="normal") t.setAttribute("font-weight",fw); t.textContent=str; return t; } }
+  async function svgToPng(svgText){ const blob = new Blob([svgText],{type:"image/svg+xml;charset=utf-8"}); const url = URL.createObjectURL(blob); const img = new Image(); const promise = new Promise((resolve, reject) => { img.onload = () => resolve(img); img.onerror = (e) => reject('Image load failed: ' + e); }); img.src = url; await promise; const PNG_TARGET_WIDTH = 4096; const aspectRatio = img.naturalHeight / img.naturalWidth; const c = document.createElement("canvas"); c.width = PNG_TARGET_WIDTH; c.height = Math.round(PNG_TARGET_WIDTH * aspectRatio); const ctx = c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.imageSmoothingQuality = "high"; ctx.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); return new Promise(res=>c.toBlob(res,"image/png")); }
+  function download(name, content, mime, isBinary=false){ const a = document.createElement("a"); a.download = name; a.href = isBinary ? URL.createObjectURL(content) : "data:"+mime+";charset=utf-8,"+encodeURIComponent(content); document.body.append(a); a.click(); a.remove(); if(isBinary) setTimeout(()=>URL.revokeObjectURL(a.href), 500); }
+
+  // -------- UI BINDINGS
+  $("#render").addEventListener("click", render);
+  $("#dlSvg").addEventListener("click", ()=>{ const svg=window.__lastExport?.(); if(!svg){ alert("Render first"); return; } download("gantt.svg", svg, "image/svg+xml"); });
+  $("#dlPng").addEventListener("click", async ()=>{ const svgText=window.__lastExport?.(); if(!svgText){ alert("Render first"); return; } try { const png=await svgToPng(svgText); download("gantt.png", png, "image/png", true); } catch(e){ console.error("PNG export failed:",e); alert("Error during PNG export.") }});
+  
+  // -------- INITIALIZATION & RESPONSIVENESS
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 150);
+  });
+  render();
+})();
+</script>
+</body>
+</html>```
