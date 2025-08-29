@@ -47,33 +47,20 @@ The tool accepts two primary formats:
 
 With Automatic 5-Phase Generation
 If you only provide a project's overall start and end dates, the tool will automatically create the 5 standard phases for you. The columns should be: Stream, Project, Start, End.
-code Code
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
 
-    
     Cross-stream  Project Phoenix   2025-01-15  2025-09-01
     P2P           Vendor Portal     2025-02-01  2025-09-30
     A2G           HR Platform       2025-04-10  2025-12-31
 
-  
-
 With Specific Phases
 If you want to define each phase manually, use this format. The columns should be: Stream, Project, Phase, Start, End, (Optional) Color.
-code Code
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
-
     
     Cross-stream,Project Phoenix,Prepare,2025-01-15,2025-02-15
     Cross-stream,Project Phoenix,Design,2025-02-10,2025-04-10,#34d399
     P2P,Vendor Portal,Build & Test,2025-04-15,2025-08-15
 
-  
-
 Author
-
 Created by Jakub Grzywa
-License
 
+License
 This project is licensed under the MIT License.
