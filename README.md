@@ -1,11 +1,6 @@
 Executive Gantt Chart Generator
 
 A single-file, zero-dependency, interactive web application for generating clean and professional-looking Gantt charts. This tool is designed to quickly turn project data from a spreadsheet into a high-quality visual perfect for executive summaries, portfolio reviews, and presentations.
-
-(Action Required: Replace the link above with a URL to a screenshot of your tool in action. A GIF would be even better!)
-➡️ View Live Demo
-
-(Action Required: Host the HTML file on GitHub Pages and replace the link above with your live URL.)
 Key Features
 
     Single HTML File: No servers, no dependencies, no build steps. Just one html file you can open anywhere.
@@ -20,7 +15,7 @@ Key Features
 
     High-Quality Export:
 
-        SVG Export: Get a crisp, scalable vector graphic for further editing in tools like Figma or Inkscape.
+        SVG Export: Get a crisp, scalable vector graphic for further editing.
 
         High-Resolution PNG Export: Download a high-quality, presentation-ready PNG with a single click.
 
@@ -28,13 +23,13 @@ Key Features
 
 How to Use
 
-    Open the Application: Open the gantt.html file in your browser or visit the live demo link.
+    Download: Download the gantt.html file from this repository.
 
-    Paste Your Data: Copy your project data from a spreadsheet (e.g., Excel, Google Sheets) and paste it into the large text area at the bottom.
+    Open: Open the gantt.html file in your web browser (e.g., Chrome, Firefox, Edge). You can do this by double-clicking the file or dragging it into a browser window.
 
-    Click "Render": The chart will be generated instantly.
+    Paste Your Data: Paste your project data from a spreadsheet into the large text area at the bottom.
 
-    Customize the View: Use the controls in the header to adjust the zoom, row height, and other options to your liking.
+    Render & Customize: The chart will render automatically. Use the controls in the header to adjust the view to your liking.
 
     Download Your Chart: Click "Download SVG" or "Download PNG" to get your high-quality export.
 
@@ -75,17 +70,9 @@ P2P,Vendor Portal,Build & Test,2025-04-15,2025-08-15
 
   
 
-How to Run Locally
-
-Since this is a self-contained application, running it locally is simple:
-
-    Clone the repository: git clone https://github.com/your-username/your-repository-name.git
-
-    Open the gantt.html file directly in your web browser (e.g., Chrome, Firefox, Edge).
-
 Author
 
 Created by Jakub Grzywa
 License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.
